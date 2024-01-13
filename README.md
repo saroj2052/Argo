@@ -1,3 +1,3 @@
-Argo
-Apply controllers-crd
+Argo <br>
+Apply controllers-crd <br>
 Apply pipelines 
