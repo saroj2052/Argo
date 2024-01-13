@@ -1,0 +1,156 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: webhook-node-test
+  namespace: argo-events
+spec:
+  dependencies:
+  - eventName: node-test
+    eventSourceName: github-node-test
+    name: github-node-test
+  template:
+    serviceAccountName: argo-events-sa
+  triggers:
+  - template:
+      argoWorkflow:
+        group: argoproj.io
+        operation: submit
+        parameters:
+        - dest: metadata.generateName
+          operation: append
+          src:
+            dataTemplate: '{{ trimPrefix "refs/heads/" .Input.body.ref }}-'
+            dependencyName: github-node-test
+        - dest: spec.templates.0.dag.tasks.0.arguments.parameters.0.value
+          src:
+            dataKey: body.repository.git_url
+            dependencyName: github-node-test
+        - dest: spec.templates.0.dag.tasks.0.arguments.parameters.1.value
+          src:
+            dataKey: body.ref
+            dependencyName: github-node-test
+        - dest: spec.templates.0.dag.tasks.0.arguments.parameters.2.value
+          src:
+            dataKey: body.after
+            dependencyName: github-node-test
+        - dest: spec.templates.0.dag.tasks.0.arguments.parameters.3.value
+          operation: append
+          src:
+            dataKey: body.repository.name
+            dependencyName: github-node-test
+        - dest: spec.templates.0.dag.tasks.0.arguments.parameters.4.value
+          src:
+            dataKey: body.after
+            dependencyName: github-node-test
+        - dest: spec.templates.0.dag.tasks.0.arguments.parameters.5.value
+          src:
+            dataKey: body.repository.full_name
+            dependencyName: github-node-test
+        - dest: spec.templates.0.dag.tasks.1.arguments.parameters.4.value
+          operation: append
+          src:
+            dataKey: body.repository.name
+            dependencyName: github-node-test
+        - dest: spec.templates.0.dag.tasks.1.arguments.parameters.5.value
+          operation: append
+          src:
+            dataKey: body.after
+            dependencyName: github-node-test
+        - dest: spec.templates.0.dag.tasks.1.arguments.parameters.7.value
+          operation: append
+          src:
+            dataKey: body.ref
+            dependencyName: github-node-test
+        - dest: metadata.generateName
+          operation: append
+          src:
+            dataTemplate: '{{ .Input.body.ref | substr 11 13 }}-'
+            dependencyName: github-node-test
+        resource: workflows
+        source:
+          resource:
+            apiVersion: argoproj.io/v1alpha1
+            kind: Workflow
+            metadata:
+              generateName: node-test-
+              namespace: argo
+            spec:
+              entrypoint: node-test
+              serviceAccountName: argo
+              templates:
+              - dag:
+                  tasks:
+                  - arguments:
+                      parameters:
+                      - name: repo_url
+                        value: ""
+                      - name: repo_ref
+                        value: ""
+                      - name: repo_commit_id
+                        value: ""
+                      - name: container_image
+                        value: acrpubcon.azurecr.io/
+                      - name: container_tag
+                        value: ""
+                      - name: full_name
+                        value: ""
+                      - name: container_folder
+                        value: node-test
+                    name: build-node-test
+                    templateRef:
+                      clusterScope: true
+                      name: container-image-executor-node-test
+                      template: build-kaniko-git-executor-node-test
+                  - arguments:
+                      parameters:
+                      - name: environment
+                        value: pubcon-app/node-test/k8s/overlays
+                      - name: repo_owner
+                        value: saroj-2052
+                      - name: repo_name
+                        value: node-test-manifest
+                      - name: image_owner
+                        value: acrpubcon.azurecr.io
+                      - name: image_name
+                        value: ""
+                      - name: tag
+                        value: ""
+                      - name: image_folder_name
+                        value: node-test
+                      - name: branch
+                        value: ""
+                    dependencies:
+                    - build-node-test
+                    name: promote-node-test
+                    templateRef:
+                      clusterScope: true
+                      name: promote-node-test
+                      template: promote-node-test
+                name: node-test
+              tolerations:
+              - effect: NoSchedule
+                key: nodeci
+                operator: Equal
+                value: ci
+              volumes:
+              - name: pull-acr
+                secret:
+                  secretName: pull-acr
+              - name: docker-config
+                secret:
+                  secretName: docker-config
+              - name: github-access
+                secret:
+                  items:
+                  - key: token
+                    path: token
+                  - key: user
+                    path: user
+                  - key: email
+                    path: email
+                  secretName: github-access
+              - name: git-hub
+                secret:
+                  secretName: github-access
+        version: v1alpha1
+      name: trigger-node-test

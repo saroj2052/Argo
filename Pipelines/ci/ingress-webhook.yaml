@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    ingress.kubernetes.io/ssl-redirect: "false"
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+  name: github-node-test
+  namespace: argo-events
+spec:
+  rules:
+  - host: webhook.pubcon.signetic.com
+    http:
+      paths:
+      - backend:
+          service:
+            name: github-node-test-eventsource-svc
+            port:
+              number: 13000
+        path: /node-test
+        pathType: Prefix

@@ -1,0 +1,34 @@
+# lets say repo name is node-test
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: github-node-test
+  namespace: argo-events
+spec:
+  github:
+    node-test:
+      active: true
+      apiToken:
+        key: token
+        name: github-access
+      contentType: json
+      events:
+      - push
+      filter:
+        expression: "(body.ref == 'refs/heads/dev') || (body.ref == 'refs/heads/qa')"
+      insecure: true
+      owner: saroj-2052
+      repository: node-test
+      webhook:
+        endpoint: /node-test
+        method: POST
+        port: "13000"
+        url: webhook.saroj.com.np
+      webhookSecret:
+        key: secret
+        name: github-access
+  service:
+    ports:
+    - port: 13000
+      targetPort: 13000
+      name: node-test

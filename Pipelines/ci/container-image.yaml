@@ -1,0 +1,54 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ClusterWorkflowTemplate
+metadata:
+  name: container-image-executor-node-test
+spec:
+  templates:
+  - container:
+      args:
+      - --context=git://github.com/{{inputs.parameters.full_name}}.git#{{inputs.parameters.repo_ref}}
+      - --destination=acrpubcon.azurecr.io/{{inputs.parameters.container_folder}}:{{inputs.parameters.container_tag}}
+      - --cache=true
+      - --build-arg=NPM_TOKEN=$(GIT_TOKEN)
+      - --target=build_production
+      - --snapshot-mode=redo
+      command:
+      - /kaniko/executor
+      env:
+      - name: GIT_TOKEN
+        valueFrom:
+          secretKeyRef:
+            key: token
+            name: github-access
+      - name: AZURE_CLIENT_ID
+        valueFrom:
+          secretKeyRef:
+            key: AZURE_CLIENT_ID
+            name: acr-kaniko-secret-sp
+      - name: AZURE_CLIENT_SECRET
+        valueFrom:
+          secretKeyRef:
+            key: AZURE_CLIENT_SECRET
+            name: acr-kaniko-secret-sp
+      - name: AZURE_TENANT_ID
+        valueFrom:
+          secretKeyRef:
+            key: AZURE_TENANT_ID
+            name: acr-kaniko-secret-sp
+      image: gcr.io/kaniko-project/executor:latest
+      volumeMounts:
+      - mountPath: /kaniko/.docker/
+        name: docker-config
+    inputs:
+      parameters:
+      - name: repo_ref
+      - name: container_image
+      - name: container_tag
+      - name: full_name
+      - name: container_folder
+    name: build-kaniko-git-executor-node-test
+    tolerations:
+    - effect: NoSchedule
+      key: nodeci
+      operator: Equal
+      value: ci

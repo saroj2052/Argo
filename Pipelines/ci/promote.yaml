@@ -1,0 +1,45 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ClusterWorkflowTemplate
+metadata:
+  name: promote-node-test
+spec:
+  templates:
+  - inputs:
+      parameters:
+      - name: environment
+      - name: repo_owner
+      - name: repo_name
+      - name: image_owner
+      - name: image_name
+      - name: tag
+      - name: image_folder_name
+      - name: branch
+    name: promote-node-test
+    script:
+      command:
+      - sh
+      image: alpine:latest
+      source: |
+        set -e
+        apk add -U git sed
+        git clone https://$(cat /.github/token)@github.com/{{inputs.parameters.repo_owner}}/{{inputs.parameters.repo_name}}
+        cd {{inputs.parameters.repo_name}}
+        branch=dev
+        if [ "{{inputs.parameters.branch}}" = "refs/heads/qa" ]; then branch=qa; fi;
+        if [ "{{inputs.parameters.branch}}" = "refs/heads/uat" ]; then branch=uat; fi;
+        if [ "{{inputs.parameters.branch}}" = "refs/heads/master" ]; then branch=prod; fi;
+        git config --global credential.helper "cache --timeout=3600"
+        sleep 2
+        echo BEFORE:
+        cat {{inputs.parameters.environment}}/$branch/deployment.yaml
+        echo AFTER:
+        sed -i 's#{{inputs.parameters.image_owner}}/{{inputs.parameters.image_folder_name}}:.*#{{inputs.parameters.image_owner}}/{{inputs.parameters.image_folder_name}}:{{inputs.parameters.tag}}#g' {{inputs.parameters.environment}}/$branch/deployment.yaml
+        cat {{inputs.parameters.environment}}/$branch/deployment.yaml
+        git config user.name "$(cat /.github/user)"
+        git config user.email "$(cat /.github/email)"
+        git add {{inputs.parameters.environment}}/$branch/deployment.yaml
+        git commit -m "Upgraded {{inputs.parameters.environment}}/$branch/deployment.yaml with the tag {{inputs.parameters.tag}}"
+        git push https://$(cat /.github/token)@github.com/{{inputs.parameters.repo_owner}}/{{inputs.parameters.repo_name}}
+      volumeMounts:
+      - mountPath: /.github/
+        name: git-hub
