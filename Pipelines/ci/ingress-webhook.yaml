@@ -9,7 +9,7 @@ metadata:
   namespace: argo-events
 spec:
   rules:
-  - host: webhook.pubcon.signetic.com
+  - host: webhook.saroj.com.np
     http:
       paths:
       - backend:
